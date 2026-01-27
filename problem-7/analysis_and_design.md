@@ -71,7 +71,7 @@ graph TD
     subgraph "Worker Service"
         Worker["Media Processor"] -->|Consume Job| Queue
         Worker -->|Fetch Original| Storage
-        Worker -->|Process (Resize/Thumb)| Worker
+        Worker -->|Process Resize-Thumb| Worker
         Worker -->|Save Derived Versions| Storage
         Worker -->|Update Status| DB
     end

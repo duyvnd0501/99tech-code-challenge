@@ -37,6 +37,8 @@ We will use a **Modular Monolith** or **Microservices** architecture (depending 
     *   **Object Storage:** For the actual image/video files (Blob storage).
 
 ### 2.2 Technology Stack Recommendation
+
+**Option 1: Node.js Ecosystem (Recommended for Real-time)**
 *   **Frontend:** `React` (or `Next.js`) + `TailwindCSS`.
     *   *Why:* Rich interactive UI needed for "Batch Curation" (drag-select, bulk edit).
 *   **Backend:** `Node.js` with `NestJS`.
@@ -46,21 +48,28 @@ We will use a **Modular Monolith** or **Microservices** architecture (depending 
 *   **Storage:** `Azure Blob Storage` (as requested) or `AWS S3`.
 *   **Queue/Processing:** `BullMQ` (Redis) + `Sharp` (Image processing) + `FFmpeg` (Video processing).
 
+**Option 2: PHP Ecosystem (Laravel)**
+*   **Frontend:** `Vue.js` (via Inertia.js) or `React` + `TailwindCSS`.
+*   **Backend:** `Laravel` (PHP).
+    *   *Why:* Fast development speed, built-in robust features (Queue system, File Storage abstraction `flysystem`, Authentication).
+*   **Database:** `MySQL` or `PostgreSQL`.
+*   **Queue/Processing:** `Laravel Horizon` (Redis) + `GD/Imagick` (Image) + `FFmpeg`.
+
 ### 2.3 System Architecture Diagram
 
 ```mermaid
 graph TD
-    User[User / Admin] -->|HTTPS| FE[Frontend SPA (React)]
-    FE -->|REST / GraphQL| API[Backend API (NestJS)]
+    User["User / Admin"] -->|HTTPS| FE["Frontend SPA (React)"]
+    FE -->|REST / GraphQL| API["Backend API (NestJS)"]
     
     subgraph "Backend Services"
         API -->|Auth & Metadata| DB[(PostgreSQL)]
-        API -->|Generate Upload URL| Storage[(Azure Blob Storage)]
-        API -->|Offload Task| Queue[Redis Queue]
+        API -->|Generate Upload URL| Storage[("Azure Blob Storage")]
+        API -->|Offload Task| Queue["Redis Queue"]
     end
     
     subgraph "Worker Service"
-        Worker[Media Processor] -->|Consume Job| Queue
+        Worker["Media Processor"] -->|Consume Job| Queue
         Worker -->|Fetch Original| Storage
         Worker -->|Process (Resize/Thumb)| Worker
         Worker -->|Save Derived Versions| Storage

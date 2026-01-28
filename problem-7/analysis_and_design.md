@@ -122,3 +122,56 @@ The "Batch Preview" UI will query items in `DRAFT` state for the current user's 
 4.  **Core Library:** Implement Folders, Albums, and Media List APIs.
 5.  **Curation UI:** Build the Batch Preview interface (complex frontend work).
 6.  **Sharing:** Implement the Public Share Link logic.
+
+---
+
+## 3. Data Warehouse & ERP Strategy
+
+### 3.1 Design Philosophy: "Assets as Inventory"
+To implement this like an ERP (Enterprise Resource Planning), we treat every digital file as an **Inventory Item**.
+*   **Stock:** How many assets do we have? (Count)
+*   **Cost:** How much storage creates cost? (Size in GB)
+*   **Turnover:** How often is an asset used? (Downloads/Views)
+*   **Depreciation:** Is the asset too old (Lifecycle/Archival)?
+
+### 3.2 Key Function for Processing
+The most critical function in this architecture is the **ETL Pipeline (Extract, Transform, Load)** or **"The Ledger Sync"**.
+*   **What it does:** It runs nightly (or real-time stream) to aggregate raw operational logs into business intelligence.
+*   **Why it works:** It decouples *Operational Performance* (User clicking download) from *Analytical Performance* (Manager querying "Marketing's storage usage in 2024").
+
+### 3.3 Data Warehouse Schema (Star Schema)
+We serve analytics using a Star Schema optimized for OLAP (Online Analytical Processing).
+
+#### Fact Tables (The "Events")
+1.  **`fact_media_usage`**: Records every interaction.
+    *   `usage_id` (PK)
+    *   `media_id` (FK) -> `dim_media`
+    *   `user_id` (FK) -> `dim_user`
+    *   `time_id` (FK) -> `dim_time`
+    *   `action_type` (Enum: VIEW, DOWNLOAD, SHARE, DELETE)
+    *   `bytes_transferred` (BigInt) - *For bandwidth cost calculation.*
+
+2.  **`fact_storage_snapshot`**: efficient daily snapshots for cost trends.
+    *   `snapshot_id` (PK)
+    *   `time_id` (FK)
+    *   `department_id` (FK)
+    *   `total_files_count` (Int)
+    *   `total_size_gb` (Decimal)
+    *   `cold_storage_gb` (Decimal)
+
+#### Dimension Tables (The "Context")
+*   **`dim_time`**: `date`, `month`, `year`, `quarter`, `is_weekend` (Critical for ERP reporting periods).
+*   **`dim_media`**: `media_id`, `type` (Video/Image), `country`, `project_code`, `category`.
+*   **`dim_user`**: `user_id`, `department`, `role`, `location`.
+*   **`dim_cost_center`**: `department_code`, `budget_limit`.
+
+### 3.4 Operational Reports (ERP Style)
+1.  **Cost Allocation Report:**
+    *   *Formula:* `(Dept Usage GB * $CostPerGB) + (Bandwidth * $CostPerTransfer)`
+    *   *Usage:* Chargeback to Marketing/Sales departments based on actual usage.
+2.  **Asset Utilization Report (Inventory Turnover):**
+    *   Identify "Dead Stock": Files uploaded > 1 year ago with 0 downloads.
+    *   *Action:* Auto-move to Cold Storage (Archive) to save money.
+3.  **Compliance & Audit Trail:**
+    *   Full history of who shared what externally.
+    *   "Who deleted the project folder?" - Traceable via Audit Log integrated into DW.
